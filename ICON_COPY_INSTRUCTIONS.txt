@@ -1,0 +1,9 @@
+Copy the actual `icon.png` into this folder (project root) before building.
+
+If you already have an `icon.png` in `d:\descargas`, copy it here:
+
+Windows PowerShell:
+
+Copy-Item -Path "D:\descargas\icon.png" -Destination "D:\descargas\proyecto_valo\icon.png"
+
+Or just drag the file into the `proyecto_valo` folder in File Explorer.

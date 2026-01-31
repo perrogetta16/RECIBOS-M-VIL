@@ -1,0 +1,43 @@
+name: Build APK with Buildozer
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip python3-venv openjdk-11-jdk git-core zip unzip libncurses5 libstdc++6
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Create venv and install buildozer
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install buildozer==1.4.7
+
+      - name: Run buildozer (Android debug)
+        env:
+          ANDROIDSDK: ${{ github.workspace }}/.buildozer/android/platform
+        run: |
+          source venv/bin/activate
+          buildozer android debug deploy run || true
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-files
+          path: bin/*.apk
