@@ -8,14 +8,18 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install system packages
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-pip python3-venv openjdk-11-jdk git-core zip unzip libncurses5 libstdc++6
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            python3-pip python3-venv openjdk-11-jdk git-core \
+            zip unzip libncurses5 libstdc++6 libffi-dev \
+            libssl-dev libjpeg-dev zlib1g-dev
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -24,20 +28,40 @@ jobs:
 
       - name: Create venv and install buildozer
         run: |
-          python -m venv venv
+          python3 -m venv venv
           source venv/bin/activate
-          pip install --upgrade pip
-          pip install buildozer==1.4.7
+          pip install --upgrade pip setuptools wheel
+          pip install buildozer==1.4.7 cython==0.29.32
 
-      - name: Run buildozer (Android debug)
+      - name: Run buildozer (Android debug build)
         env:
           ANDROIDSDK: ${{ github.workspace }}/.buildozer/android/platform
         run: |
           source venv/bin/activate
-          buildozer android debug deploy run || true
+          mkdir -p bin
+          buildozer android debug 2>&1 | tee build.log || echo "Build exit code: $?"
+          ls -la bin/ || echo "No bin folder"
+
+      - name: Check build artifacts
+        run: |
+          if ls bin/*.apk 1> /dev/null 2>&1; then
+            echo "APK found!"
+            ls -lh bin/*.apk
+          else
+            echo "No APK generated. Check build logs."
+            tail -100 build.log || true
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: apk-files
           path: bin/*.apk
+
+      - name: Upload build logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-logs
+          path: build.log
